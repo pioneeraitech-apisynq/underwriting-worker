@@ -36,8 +36,22 @@ export interface WorkerConfig {
   awsRegion: string;
   googleApiKey: string;
   sendgridApiKey: string;
+  /**
+   * Must be a sender address (or domain) that has been verified inside the
+   * SendGrid account. SendGrid rejects sends from unverified senders with a
+   * 403 error. Set DECISION_LETTER_FROM_EMAIL in every environment.
+   * See: https://docs.sendgrid.com/ui/sending-email/sender-verification
+   */
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  /**
+   * SendGrid Dynamic Template ID for decision letters (starts with "d-…").
+   * The template must expose the Handlebars variables consumed by
+   * MailService#sendDecisionLetter: applicantName, policyNumber, decision,
+   * body.
+   * Set DECISION_LETTER_TEMPLATE_ID in every environment.
+   */
+  decisionLetterTemplateId: string;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,14 +77,14 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Required — SendGrid rejects sends from unverified senders (403).
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    // Required — the Dynamic Template that renders decision letters.
+    decisionLetterTemplateId: required('DECISION_LETTER_TEMPLATE_ID'),
   };
 }
 
