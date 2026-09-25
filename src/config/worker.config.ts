@@ -63,10 +63,7 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
