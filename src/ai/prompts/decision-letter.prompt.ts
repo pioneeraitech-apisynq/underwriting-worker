@@ -1,11 +1,15 @@
 /**
  * System prompt and user-turn builder for the decision letter agent
- * (Google Gemini, gemini-2.0-flash).
+ * (Google Gemini, gemini-3.8-flash).
  *
  * This agent writes to the customer, so the prompt constrains tone, length and
  * what it is allowed to claim. It never sees the raw application: the caller
  * passes the decision, the reasons the risk agent already sanitised, and the
  * premium.
+ *
+ * The model is instructed to respond with a JSON object so the agent can
+ * perform deterministic validation on the structured output before returning
+ * the letter body.
  */
 export const DECISION_LETTER_SYSTEM_PROMPT = `You write underwriting decision letters for a personal-lines insurer. You are given a decision that has already been made. You do not make, question or re-explain the decision — you communicate it.
 
@@ -24,7 +28,8 @@ Rules:
 - Do not mention models, scores, automation, or how the decision was reached internally. Do not use the words "algorithm", "AI", "score" or "system".
 - Do not use a protected characteristic as a reason, and do not restate a reason that names one.
 - No apologies for the decision itself, no upselling, no marketing.
-- 120 to 220 words. Output the letter body only: no subject line, no email headers, no commentary.`;
+- 120 to 220 words. Output ONLY valid JSON matching this exact schema — no prose, no markdown fences:
+  {"letter": "<letter body here>"}`;
 
 export interface DecisionLetterInput {
   firstName: string;
