@@ -24,10 +24,15 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
     /**
      * Risk scoring agent — src/ai/risk-scoring.agent.ts
      * Handles applicant PII and prior claims history.
+     *
+     * The model id uses the `us.` cross-region inference profile prefix so
+     * Bedrock can route requests across us-east-1, us-west-2, and us-east-2.
+     * This improves throughput during Kafka burst events and removes the
+     * single-region token-per-minute bottleneck.
      */
     riskScoring: {
       provider: 'aws-bedrock',
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       maxOutputTokens: 1024,
       // Underwriting has to be reproducible, so scoring is run greedily.
       temperature: 0,

@@ -111,6 +111,24 @@ export class RiskScoringAgent {
       );
     }
 
+    // Log token consumption for every invocation so that operators can track
+    // usage against the cross-model Max Tokens Per Day quota (account/region
+    // scoped, shared across all Bedrock models — no longer per-model isolated).
+    if (payload.usage) {
+      const { input_tokens, output_tokens } = payload.usage;
+      this.logger.log(
+        `Bedrock token usage for application ${event.applicationId}: ` +
+          `input=${input_tokens} output=${output_tokens} model=${this.model.modelId}`,
+      );
+      if (output_tokens >= this.model.maxOutputTokens * 0.9) {
+        this.logger.warn(
+          `Output tokens (${output_tokens}) are within 10 % of the configured ` +
+            `ceiling (${this.model.maxOutputTokens}) for application ${event.applicationId} — ` +
+            `review cross-model quota headroom`,
+        );
+      }
+    }
+
     const text = (payload.content ?? [])
       .filter((block) => block.type === 'text')
       .map((block) => block.text ?? '')
