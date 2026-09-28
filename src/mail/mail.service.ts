@@ -27,25 +27,43 @@ export class MailService {
   }
 
   async sendDecisionLetter(mail: DecisionLetterMail): Promise<void> {
-    const [response] = await sendgrid.send({
-      to: { email: mail.to, name: mail.applicantName },
-      from: {
-        email: this.config.decisionLetterFromEmail,
-        name: 'Digital Insurance Underwriting',
-      },
-      replyTo: this.config.decisionLetterReplyTo,
-      subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
-      categories: ['underwriting-decision', `decision-${mail.decision}`],
-      customArgs: {
-        policyNumber: mail.policyNumber,
-        decision: mail.decision,
-      },
-    });
+    try {
+      const [response] = await sendgrid.send({
+        to: { email: mail.to, name: mail.applicantName },
+        from: {
+          email: this.config.decisionLetterFromEmail,
+          name: 'Digital Insurance Underwriting',
+        },
+        replyTo: this.config.decisionLetterReplyTo,
+        subject: subjectFor(mail.decision, mail.policyNumber),
+        // Use a SendGrid Dynamic Template so the letter layout can be updated
+        // in the SendGrid dashboard without code changes. The template uses
+        // Handlebars syntax and receives the fields below as substitution data.
+        templateId: this.config.decisionLetterTemplateId,
+        dynamicTemplateData: {
+          subject: subjectFor(mail.decision, mail.policyNumber),
+          applicantName: mail.applicantName,
+          policyNumber: mail.policyNumber,
+          decision: mail.decision,
+          body: mail.body,
+        },
+        categories: ['underwriting-decision', `decision-${mail.decision}`],
+        customArgs: {
+          policyNumber: mail.policyNumber,
+          decision: mail.decision,
+        },
+      });
 
-    this.logger.log(
-      `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
-    );
+      this.logger.log(
+        `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `SendGrid rejected decision letter for policy ${mail.policyNumber}: ${error.message}`,
+        error.response?.body,
+      );
+      throw error;
+    }
   }
 }
 
