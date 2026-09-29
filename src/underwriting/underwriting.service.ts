@@ -116,7 +116,12 @@ export class UnderwritingService {
         applicantName: event.applicant.fullName,
         policyNumber: event.policyNumber,
         decision,
-        body: letterBody,
+        dynamicTemplateData: {
+          applicantName: event.applicant.fullName,
+          policyNumber: event.policyNumber,
+          decision,
+          premium: decision === 'approved' ? formatPremium(premiumCents) : '',
+        },
       });
 
       this.logger.log(
@@ -216,4 +221,13 @@ export class UnderwritingService {
 
 function firstNameOf(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || 'there';
+}
+
+/**
+ * Formats an annual premium in cents as a USD string for the template,
+ * e.g. 120000 → "$1,200.00 / yr".
+ */
+function formatPremium(premiumCents: number): string {
+  const dollars = premiumCents / 100;
+  return `${dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / yr`;
 }
