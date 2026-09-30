@@ -5,9 +5,10 @@ import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 /**
  * Delivery of decision letters through SendGrid.
  *
- * The body is whatever the decision letter agent wrote; this service only
- * decides the subject, the addresses and the category the mail is tagged with
- * so delivery can be reported on per decision type.
+ * Email layout and copy are owned by the SendGrid Dynamic Template identified
+ * by `decisionLetterTemplateId`. The structured fields below are passed as
+ * Handlebars template variables so non-engineers can update letter wording
+ * without a code deployment.
  */
 
 export interface DecisionLetterMail {
@@ -34,8 +35,13 @@ export class MailService {
         name: 'Digital Insurance Underwriting',
       },
       replyTo: this.config.decisionLetterReplyTo,
-      subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
+      templateId: this.config.decisionLetterTemplateId,
+      dynamicTemplateData: {
+        applicantName: mail.applicantName,
+        policyNumber: mail.policyNumber,
+        decision: mail.decision,
+        letterBody: mail.body,
+      },
       categories: ['underwriting-decision', `decision-${mail.decision}`],
       customArgs: {
         policyNumber: mail.policyNumber,
@@ -46,19 +52,5 @@ export class MailService {
     this.logger.log(
       `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
     );
-  }
-}
-
-function subjectFor(
-  decision: DecisionLetterMail['decision'],
-  policyNumber: string,
-): string {
-  switch (decision) {
-    case 'approved':
-      return `Your policy ${policyNumber} has been approved`;
-    case 'referred':
-      return `We are reviewing your application for policy ${policyNumber}`;
-    case 'declined':
-      return `A decision on your application for policy ${policyNumber}`;
   }
 }
