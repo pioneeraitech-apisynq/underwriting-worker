@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { AI_MODELS } from '../config/ai-models.config';
 import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 import {
@@ -11,11 +11,11 @@ import {
 /**
  * Decision letter agent.
  *
- * Runs Google Gemini 2.0 Flash. This one writes customer-facing prose rather
- * than making a decision, so it runs on a cheaper, faster model than risk
- * scoring, and it is deliberately given only the decision, the premium and
- * the already-sanitised reasons — never the application, the address or the
- * claims history.
+ * Runs Google Gemini 3.8 Flash via the Interactions API. This one writes
+ * customer-facing prose rather than making a decision, so it runs on a
+ * cheaper, faster model than risk scoring, and it is deliberately given only
+ * the decision, the premium and the already-sanitised reasons — never the
+ * application, the address or the claims history.
  *
  * The letter it returns is stored alongside the decision and then sent by
  * MailService through SendGrid.
@@ -24,18 +24,10 @@ import {
 export class DecisionLetterAgent {
   private readonly logger = new Logger(DecisionLetterAgent.name);
   private readonly config = AI_MODELS.decisionLetter;
-  private readonly model: GenerativeModel;
+  private readonly ai: GoogleGenAI;
 
   constructor(@Inject(WORKER_CONFIG) workerConfig: WorkerConfig) {
-    const genAI = new GoogleGenerativeAI(workerConfig.googleApiKey);
-    this.model = genAI.getGenerativeModel({
-      model: this.config.modelId,
-      systemInstruction: DECISION_LETTER_SYSTEM_PROMPT,
-      generationConfig: {
-        temperature: this.config.temperature,
-        maxOutputTokens: this.config.maxOutputTokens,
-      },
-    });
+    this.ai = new GoogleGenAI({ apiKey: workerConfig.googleApiKey });
   }
 
   /** The model id this agent runs, for the decision audit row. */
@@ -44,11 +36,38 @@ export class DecisionLetterAgent {
   }
 
   async draft(input: DecisionLetterInput): Promise<string> {
-    const result = await this.model.generateContent(
-      buildDecisionLetterPrompt(input),
-    );
+    const response = await this.ai.interactions.create({
+      model: this.config.modelId,
+      input: buildDecisionLetterPrompt(input),
+      config: {
+        systemInstruction: DECISION_LETTER_SYSTEM_PROMPT,
+        temperature: this.config.temperature,
+        maxOutputTokens: this.config.maxOutputTokens,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            letter: { type: 'string' },
+          },
+          required: ['letter'],
+        },
+      },
+    });
 
-    const letter = result.response.text().trim();
+    const raw = response.text ?? '';
+    let letter: string;
+    try {
+      const parsed = JSON.parse(raw) as { letter?: string };
+      letter = (parsed.letter ?? '').trim();
+    } catch {
+      // Fallback: if parsing fails, use the raw text rather than dropping the
+      // response entirely, but log so we can investigate.
+      this.logger.warn(
+        `Decision letter agent returned non-JSON for policy ${input.policyNumber}; using raw text`,
+      );
+      letter = raw.trim();
+    }
+
     if (!letter) {
       throw new Error(
         `Decision letter agent returned an empty letter for policy ${input.policyNumber}`,
