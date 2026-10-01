@@ -5,9 +5,15 @@ import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 /**
  * Delivery of decision letters through SendGrid.
  *
- * The body is whatever the decision letter agent wrote; this service only
- * decides the subject, the addresses and the category the mail is tagged with
- * so delivery can be reported on per decision type.
+ * Each decision type (`approved`, `referred`, `declined`) is backed by its
+ * own SendGrid Dynamic Template so that layout, styling and subject line are
+ * managed in the SendGrid UI rather than in code.  The AI-generated letter
+ * text is passed as `dynamicTemplateData.body` and referenced in the template
+ * with `{{{body}}}` (triple-stache to preserve line breaks unescaped).
+ *
+ * The `from` address is always sourced from config — the config loader
+ * enforces that it is set explicitly, preventing delivery failures caused by
+ * an unverified sender domain.
  */
 
 export interface DecisionLetterMail {
@@ -34,8 +40,13 @@ export class MailService {
         name: 'Digital Insurance Underwriting',
       },
       replyTo: this.config.decisionLetterReplyTo,
-      subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
+      templateId: this.config.decisionLetterTemplateIds[mail.decision],
+      dynamicTemplateData: {
+        applicantName: mail.applicantName,
+        policyNumber: mail.policyNumber,
+        decision: mail.decision,
+        body: mail.body,
+      },
       categories: ['underwriting-decision', `decision-${mail.decision}`],
       customArgs: {
         policyNumber: mail.policyNumber,
@@ -46,19 +57,5 @@ export class MailService {
     this.logger.log(
       `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
     );
-  }
-}
-
-function subjectFor(
-  decision: DecisionLetterMail['decision'],
-  policyNumber: string,
-): string {
-  switch (decision) {
-    case 'approved':
-      return `Your policy ${policyNumber} has been approved`;
-    case 'referred':
-      return `We are reviewing your application for policy ${policyNumber}`;
-    case 'declined':
-      return `A decision on your application for policy ${policyNumber}`;
   }
 }

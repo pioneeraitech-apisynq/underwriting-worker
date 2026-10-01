@@ -38,6 +38,11 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplateIds: {
+    approved: string;
+    referred: string;
+    declined: string;
+  };
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,14 +68,19 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Must be a SendGrid-verified email address or domain; no fallback is
+    // provided deliberately so an unverified sender causes a startup failure
+    // rather than a 403 at delivery time.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplateIds: {
+      approved: required('DECISION_LETTER_TEMPLATE_ID_APPROVED'),
+      referred: required('DECISION_LETTER_TEMPLATE_ID_REFERRED'),
+      declined: required('DECISION_LETTER_TEMPLATE_ID_DECLINED'),
+    },
   };
 }
 
