@@ -34,6 +34,8 @@ export interface WorkerConfig {
   policyApiUrl: string;
   claimsApiUrl: string;
   awsRegion: string;
+  bedrockGuardrailId: string;
+  bedrockGuardrailVersion: string;
   googleApiKey: string;
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
@@ -61,6 +63,11 @@ export function loadWorkerConfig(): WorkerConfig {
     policyApiUrl: required('POLICY_API_URL'),
     claimsApiUrl: required('CLAIMS_API_URL'),
     awsRegion: optional('AWS_REGION', 'us-east-1'),
+    // Bedrock Guardrail applied to every risk-scoring inference call.
+    // BEDROCK_GUARDRAIL_ID is required so that a misconfigured deployment
+    // fails at startup rather than silently sending unguarded requests.
+    bedrockGuardrailId: required('BEDROCK_GUARDRAIL_ID'),
+    bedrockGuardrailVersion: optional('BEDROCK_GUARDRAIL_VERSION', 'DRAFT'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
     decisionLetterFromEmail: optional(
