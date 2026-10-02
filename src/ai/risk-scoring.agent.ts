@@ -42,9 +42,13 @@ export class RiskScoringAgent {
   private readonly logger = new Logger(RiskScoringAgent.name);
   private readonly bedrock: BedrockRuntimeClient;
   private readonly model = AI_MODELS.riskScoring;
+  private readonly guardrailId: string;
+  private readonly guardrailVersion: string;
 
   constructor(@Inject(WORKER_CONFIG) config: WorkerConfig) {
     this.bedrock = new BedrockRuntimeClient({ region: config.awsRegion });
+    this.guardrailId = config.bedrockGuardrailId;
+    this.guardrailVersion = config.bedrockGuardrailVersion;
   }
 
   /** The model id this agent runs, for the decision audit row. */
@@ -86,6 +90,12 @@ export class RiskScoringAgent {
       modelId: this.model.modelId,
       contentType: 'application/json',
       accept: 'application/json',
+      // Guardrail applied to every risk-scoring call (content filters,
+      // prompt-attack detection, denied topics). guardrailIdentifier and
+      // guardrailVersion are required fields — missing values fail at startup
+      // via WorkerConfig validation (best practice: Bedrock Guardrails).
+      guardrailIdentifier: this.guardrailId,
+      guardrailVersion: this.guardrailVersion,
       body: JSON.stringify({
         anthropic_version: BEDROCK_ANTHROPIC_VERSION,
         max_tokens: this.model.maxOutputTokens,
