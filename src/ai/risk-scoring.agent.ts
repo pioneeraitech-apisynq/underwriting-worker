@@ -29,6 +29,18 @@ import {
  *
  * The agent returns a score and a recommendation; the decision itself is made
  * by UnderwritingService, which applies the bands and can override.
+ *
+ * Bedrock Guardrails
+ * ------------------
+ * Every inference request is bound to a Bedrock Guardrail via
+ * BEDROCK_GUARDRAIL_ID / BEDROCK_GUARDRAIL_VERSION. The guardrail enforces
+ * content filters, PII redaction, and prompt-attack detection on both the
+ * request and the model response.
+ *
+ * The worker's IAM execution role must include the condition key
+ *   bedrock:GuardrailIdentifier = <guardrailId>
+ * on its bedrock:InvokeModel Allow statement so that calls without the
+ * guardrail are rejected at the policy level, not just by application code.
  */
 
 interface BedrockAnthropicResponse {
@@ -42,9 +54,13 @@ export class RiskScoringAgent {
   private readonly logger = new Logger(RiskScoringAgent.name);
   private readonly bedrock: BedrockRuntimeClient;
   private readonly model = AI_MODELS.riskScoring;
+  private readonly guardrailId: string;
+  private readonly guardrailVersion: string;
 
   constructor(@Inject(WORKER_CONFIG) config: WorkerConfig) {
     this.bedrock = new BedrockRuntimeClient({ region: config.awsRegion });
+    this.guardrailId = config.bedrockGuardrailId;
+    this.guardrailVersion = config.bedrockGuardrailVersion;
   }
 
   /** The model id this agent runs, for the decision audit row. */
@@ -86,6 +102,11 @@ export class RiskScoringAgent {
       modelId: this.model.modelId,
       contentType: 'application/json',
       accept: 'application/json',
+      // Guardrail is applied to both the input prompt and the model response.
+      // The worker's IAM role must enforce bedrock:GuardrailIdentifier via an
+      // IAM condition key so that calls lacking a guardrail are denied.
+      guardrailIdentifier: this.guardrailId,
+      guardrailVersion: this.guardrailVersion,
       body: JSON.stringify({
         anthropic_version: BEDROCK_ANTHROPIC_VERSION,
         max_tokens: this.model.maxOutputTokens,
