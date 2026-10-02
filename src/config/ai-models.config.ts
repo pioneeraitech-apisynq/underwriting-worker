@@ -24,10 +24,19 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
     /**
      * Risk scoring agent — src/ai/risk-scoring.agent.ts
      * Handles applicant PII and prior claims history.
+     *
+     * A cross-region inference profile ARN is used instead of the bare model
+     * ID so that Bedrock can route requests across multiple AWS Regions during
+     * peak utilisation bursts, improving throughput and availability.
+     * See: https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html
+     *
+     * If your account has a custom application-level cross-region profile,
+     * replace this ARN with that profile's ARN.
      */
     riskScoring: {
       provider: 'aws-bedrock',
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId:
+        'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0',
       maxOutputTokens: 1024,
       // Underwriting has to be reproducible, so scoring is run greedily.
       temperature: 0,
