@@ -99,7 +99,9 @@ exceeds $1,000,000 or when the model's own confidence is below 0.6.
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bedrock access |
 | `GOOGLE_API_KEY` | Gemini access |
 | `SENDGRID_API_KEY` | Email delivery |
-| `DECISION_LETTER_FROM_EMAIL` / `DECISION_LETTER_REPLY_TO` | Letter addresses |
+| `DECISION_LETTER_FROM_EMAIL` | **Required.** A verified sender address or authenticated domain in your SendGrid account. SendGrid will reject mail from unverified addresses. |
+| `DECISION_LETTER_REPLY_TO` | Reply-to address for decision letters (defaults to `support@digitalinsurance.dev`) |
+| `DECISION_LETTER_TEMPLATE_ID` | **Required.** The SendGrid Dynamic Template ID used to render decision letters. The template receives `subject`, `applicantName`, `policyNumber`, `decision`, and `body` as Handlebars variables. |
 
 Required variables are checked at startup in `src/config/worker.config.ts`, so
 a missing value fails the process immediately rather than surfacing as an
