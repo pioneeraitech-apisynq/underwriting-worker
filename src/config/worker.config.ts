@@ -34,6 +34,10 @@ export interface WorkerConfig {
   policyApiUrl: string;
   claimsApiUrl: string;
   awsRegion: string;
+  /** Bedrock Guardrail ID applied to all risk-scoring inference calls. */
+  bedrockGuardrailId: string;
+  /** Bedrock Guardrail version applied to all risk-scoring inference calls. */
+  bedrockGuardrailVersion: string;
   googleApiKey: string;
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
@@ -61,6 +65,8 @@ export function loadWorkerConfig(): WorkerConfig {
     policyApiUrl: required('POLICY_API_URL'),
     claimsApiUrl: required('CLAIMS_API_URL'),
     awsRegion: optional('AWS_REGION', 'us-east-1'),
+    bedrockGuardrailId: required('BEDROCK_GUARDRAIL_ID'),
+    bedrockGuardrailVersion: optional('BEDROCK_GUARDRAIL_VERSION', 'DRAFT'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
     decisionLetterFromEmail: optional(
