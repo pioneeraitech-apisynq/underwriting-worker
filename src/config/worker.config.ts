@@ -38,6 +38,12 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  /** SendGrid Dynamic Template IDs, one per decision outcome. */
+  decisionLetterTemplateIds: {
+    approved: string;
+    referred: string;
+    declined: string;
+  };
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -71,6 +77,11 @@ export function loadWorkerConfig(): WorkerConfig {
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplateIds: {
+      approved: required('SENDGRID_TEMPLATE_ID_APPROVED'),
+      referred: required('SENDGRID_TEMPLATE_ID_REFERRED'),
+      declined: required('SENDGRID_TEMPLATE_ID_DECLINED'),
+    },
   };
 }
 
