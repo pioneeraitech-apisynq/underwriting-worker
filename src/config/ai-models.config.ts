@@ -24,10 +24,15 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
     /**
      * Risk scoring agent — src/ai/risk-scoring.agent.ts
      * Handles applicant PII and prior claims history.
+     *
+     * The `us.` prefix selects the US cross-region inference profile, which
+     * lets Bedrock route requests across us-east-1 / us-west-2 / us-east-2
+     * during peak utilisation to avoid throttling. See:
+     * https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html
      */
     riskScoring: {
       provider: 'aws-bedrock',
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       maxOutputTokens: 1024,
       // Underwriting has to be reproducible, so scoring is run greedily.
       temperature: 0,
