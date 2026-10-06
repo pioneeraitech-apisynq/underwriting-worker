@@ -34,6 +34,8 @@ export interface WorkerConfig {
   policyApiUrl: string;
   claimsApiUrl: string;
   awsRegion: string;
+  bedrockGuardrailId: string;
+  bedrockGuardrailVersion: string;
   googleApiKey: string;
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
@@ -60,7 +62,13 @@ export function loadWorkerConfig(): WorkerConfig {
     redisUrl: required('REDIS_URL'),
     policyApiUrl: required('POLICY_API_URL'),
     claimsApiUrl: required('CLAIMS_API_URL'),
+    // AWS credentials are NOT read here. The SDK resolves credentials
+    // automatically from the ECS task role / EC2 instance profile / IRSA
+    // annotation attached to the compute environment, so no long-term key
+    // pair is required or accepted.
     awsRegion: optional('AWS_REGION', 'us-east-1'),
+    bedrockGuardrailId: required('BEDROCK_GUARDRAIL_ID'),
+    bedrockGuardrailVersion: required('BEDROCK_GUARDRAIL_VERSION'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
     decisionLetterFromEmail: optional(
