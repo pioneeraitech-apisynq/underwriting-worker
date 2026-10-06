@@ -38,6 +38,7 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplateId: string;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,14 +64,18 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Must be a sender identity or domain that is verified in the SendGrid
+    // account.  There is intentionally no fallback: an unverified address will
+    // cause SendGrid to reject every message with a 403, so a missing value
+    // should be caught at startup rather than discovered on first send.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    // The SendGrid Dynamic Template used for underwriting decision letters.
+    // Create / update the template in the SendGrid dashboard; copy its ID here.
+    decisionLetterTemplateId: required('DECISION_LETTER_TEMPLATE_ID'),
   };
 }
 
