@@ -8,6 +8,12 @@ import {
   buildDecisionLetterPrompt,
 } from './prompts/decision-letter.prompt';
 
+/** Shape of the JSON object Gemini is instructed to return. */
+interface DecisionLetterResponse {
+  letter: string;
+  wordCount: number;
+}
+
 /**
  * Decision letter agent.
  *
@@ -34,6 +40,7 @@ export class DecisionLetterAgent {
       generationConfig: {
         temperature: this.config.temperature,
         maxOutputTokens: this.config.maxOutputTokens,
+        responseMimeType: 'application/json',
       },
     });
   }
@@ -48,18 +55,35 @@ export class DecisionLetterAgent {
       buildDecisionLetterPrompt(input),
     );
 
-    const letter = result.response.text().trim();
+    const raw = result.response.text().trim();
+    if (!raw) {
+      throw new Error(
+        `Decision letter agent returned an empty response for policy ${input.policyNumber}`,
+      );
+    }
+
+    let parsed: DecisionLetterResponse;
+    try {
+      parsed = JSON.parse(raw) as DecisionLetterResponse;
+    } catch (error) {
+      throw new Error(
+        `Decision letter agent returned malformed JSON for policy ${input.policyNumber}: ${(error as Error).message}`,
+      );
+    }
+
+    const letter = parsed.letter?.trim();
     if (!letter) {
       throw new Error(
         `Decision letter agent returned an empty letter for policy ${input.policyNumber}`,
       );
     }
 
-    // A truncated letter would reach the customer mid-sentence, so short
-    // output is treated as a failure rather than sent.
-    if (letter.split(/\s+/).length < 60) {
+    // A truncated letter would reach the customer mid-sentence, so use the
+    // model-reported word count (from the structured response) to detect this
+    // reliably, rather than re-splitting the text ourselves.
+    if (typeof parsed.wordCount === 'number' && parsed.wordCount < 60) {
       this.logger.warn(
-        `Decision letter for policy ${input.policyNumber} came back unusually short`,
+        `Decision letter for policy ${input.policyNumber} came back unusually short (${parsed.wordCount} words)`,
       );
     }
 
