@@ -24,7 +24,8 @@ Rules:
 - Do not mention models, scores, automation, or how the decision was reached internally. Do not use the words "algorithm", "AI", "score" or "system".
 - Do not use a protected characteristic as a reason, and do not restate a reason that names one.
 - No apologies for the decision itself, no upselling, no marketing.
-- 120 to 220 words. Output the letter body only: no subject line, no email headers, no commentary.`;
+- 120 to 220 words. Output ONLY valid JSON matching this schema — no prose outside the JSON object:
+  { "letter": "<letter body as a single string with \\n between paragraphs>", "wordCount": <integer word count of the letter body> }`;
 
 export interface DecisionLetterInput {
   firstName: string;
