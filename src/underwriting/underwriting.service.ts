@@ -116,7 +116,12 @@ export class UnderwritingService {
         applicantName: event.applicant.fullName,
         policyNumber: event.policyNumber,
         decision,
-        body: letterBody,
+        templateData: {
+          premiumCents,
+          productType: policy.productType,
+          termMonths: policy.termMonths,
+          reasons: assessment.reasons,
+        },
       });
 
       this.logger.log(
