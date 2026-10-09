@@ -27,6 +27,13 @@ export interface KafkaConfig {
   saslPassword: string;
 }
 
+/** SendGrid Dynamic Template IDs, one per underwriting decision outcome. */
+export interface DecisionLetterTemplates {
+  approved: string;
+  referred: string;
+  declined: string;
+}
+
 export interface WorkerConfig {
   kafka: KafkaConfig;
   postgresUrl: string;
@@ -38,6 +45,7 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplates: DecisionLetterTemplates;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -71,6 +79,11 @@ export function loadWorkerConfig(): WorkerConfig {
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplates: {
+      approved: required('SENDGRID_TEMPLATE_ID_APPROVED'),
+      referred: required('SENDGRID_TEMPLATE_ID_REFERRED'),
+      declined: required('SENDGRID_TEMPLATE_ID_DECLINED'),
+    },
   };
 }
 
