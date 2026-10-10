@@ -1,11 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   BedrockRuntimeClient,
-  InvokeModelCommand,
+  ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime';
 import {
   AI_MODELS,
-  BEDROCK_ANTHROPIC_VERSION,
 } from '../config/ai-models.config';
 import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 import {
@@ -29,13 +28,13 @@ import {
  *
  * The agent returns a score and a recommendation; the decision itself is made
  * by UnderwritingService, which applies the bands and can override.
+ *
+ * Quota note: Bedrock enforces a single Cross-Model Max Tokens Per Day quota
+ * per account per Region across all supported models (it replaced the old
+ * per-model quotas).  Any CloudWatch alarms or quota-increase requests should
+ * target the "bedrock-runtime" service-code / "CrossModelMaxTokensPerDay"
+ * quota-code rather than per-model limits.
  */
-
-interface BedrockAnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
-  stop_reason?: string;
-  usage?: { input_tokens: number; output_tokens: number };
-}
 
 @Injectable()
 export class RiskScoringAgent {
@@ -44,6 +43,9 @@ export class RiskScoringAgent {
   private readonly model = AI_MODELS.riskScoring;
 
   constructor(@Inject(WORKER_CONFIG) config: WorkerConfig) {
+    // Credentials are intentionally omitted here — the SDK resolves them from
+    // the ambient credential chain (IMDSv2 instance profile / ECS task role).
+    // Never pass long-term AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
     this.bedrock = new BedrockRuntimeClient({ region: config.awsRegion });
   }
 
@@ -82,38 +84,38 @@ export class RiskScoringAgent {
       })),
     });
 
-    const command = new InvokeModelCommand({
+    // ConverseCommand provides a consistent request format across models and is
+    // the recommended Bedrock API for new integrations.  It abstracts the
+    // per-model wire format, so switching model IDs (e.g. to a newer Sonnet
+    // version) does not require body-format changes here.
+    const command = new ConverseCommand({
       modelId: this.model.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify({
-        anthropic_version: BEDROCK_ANTHROPIC_VERSION,
-        max_tokens: this.model.maxOutputTokens,
+      system: [{ text: RISK_SCORING_SYSTEM_PROMPT }],
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: userPrompt }],
+        },
+      ],
+      inferenceConfig: {
+        maxTokens: this.model.maxOutputTokens,
         temperature: this.model.temperature,
-        system: RISK_SCORING_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: userPrompt }],
-          },
-        ],
-      }),
+      },
     });
 
     const response = await this.bedrock.send(command);
-    const payload = JSON.parse(
-      Buffer.from(response.body).toString('utf-8'),
-    ) as BedrockAnthropicResponse;
 
-    if (payload.stop_reason === 'max_tokens') {
+    // ConverseCommand surfaces stop reason as response.stopReason.
+    // "max_tokens" means the reply was truncated before the model finished.
+    if (response.stopReason === 'max_tokens') {
       this.logger.warn(
         `Risk scoring hit the token ceiling for application ${event.applicationId}`,
       );
     }
 
-    const text = (payload.content ?? [])
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text ?? '')
+    const text = (response.output?.message?.content ?? [])
+      .filter((block) => 'text' in block)
+      .map((block) => (block as { text: string }).text)
       .join('')
       .trim();
 
