@@ -27,6 +27,16 @@ export interface KafkaConfig {
   saslPassword: string;
 }
 
+/**
+ * SendGrid Dynamic Template IDs, one per underwriting decision type.
+ * Each must be created and published in the SendGrid dashboard before use.
+ */
+export interface DecisionLetterTemplateIds {
+  approved: string;
+  referred: string;
+  declined: string;
+}
+
 export interface WorkerConfig {
   kafka: KafkaConfig;
   postgresUrl: string;
@@ -36,8 +46,10 @@ export interface WorkerConfig {
   awsRegion: string;
   googleApiKey: string;
   sendgridApiKey: string;
+  /** Must be a SendGrid-verified sender address or domain. */
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplateIds: DecisionLetterTemplateIds;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,14 +75,17 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Must be a verified sender — no fallback to avoid silent misconfiguration.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplateIds: {
+      approved: required('SENDGRID_TEMPLATE_ID_APPROVED'),
+      referred: required('SENDGRID_TEMPLATE_ID_REFERRED'),
+      declined: required('SENDGRID_TEMPLATE_ID_DECLINED'),
+    },
   };
 }
 

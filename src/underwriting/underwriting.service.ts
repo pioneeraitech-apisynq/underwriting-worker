@@ -117,6 +117,8 @@ export class UnderwritingService {
         policyNumber: event.policyNumber,
         decision,
         body: letterBody,
+        premiumCents,
+        reasons: assessment.reasons,
       });
 
       this.logger.log(
