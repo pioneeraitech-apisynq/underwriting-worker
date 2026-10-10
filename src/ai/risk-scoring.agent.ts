@@ -106,8 +106,18 @@ export class RiskScoringAgent {
     ) as BedrockAnthropicResponse;
 
     if (payload.stop_reason === 'max_tokens') {
+      // The per-invocation output was truncated at this.model.maxOutputTokens.
+      // If this happens repeatedly, check the Cross-Model Max Tokens Per Day
+      // quota in AWS Service Quotas (console path:
+      //   AWS Bedrock → Quotas → "Cross-Model Max Tokens Per Day").
+      // This is a per-account, per-Region daily aggregate across ALL Bedrock
+      // models — do NOT look at the deprecated per-model quota, which AWS has
+      // replaced with this single cross-model limit. Request a quota increase
+      // against "Cross-Model Max Tokens Per Day" if throughput is constrained.
       this.logger.warn(
-        `Risk scoring hit the token ceiling for application ${event.applicationId}`,
+        `Risk scoring hit the token ceiling for application ${event.applicationId}. ` +
+          `If this recurs, verify the Cross-Model Max Tokens Per Day quota ` +
+          `(per-account, per-Region) in AWS Service Quotas and request an increase there.`,
       );
     }
 
