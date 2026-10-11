@@ -1,12 +1,9 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   BedrockRuntimeClient,
-  InvokeModelCommand,
+  ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime';
-import {
-  AI_MODELS,
-  BEDROCK_ANTHROPIC_VERSION,
-} from '../config/ai-models.config';
+import { AI_MODELS } from '../config/ai-models.config';
 import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 import {
   PolicyApplicationEvent,
@@ -29,22 +26,25 @@ import {
  *
  * The agent returns a score and a recommendation; the decision itself is made
  * by UnderwritingService, which applies the bands and can override.
+ *
+ * Authentication: the BedrockRuntimeClient relies on the AWS SDK default
+ * credential chain (EC2/ECS task role, environment role, etc.). No static
+ * AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are read or expected — use an
+ * IAM instance or task role so credentials are always short-lived.
  */
-
-interface BedrockAnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
-  stop_reason?: string;
-  usage?: { input_tokens: number; output_tokens: number };
-}
 
 @Injectable()
 export class RiskScoringAgent {
   private readonly logger = new Logger(RiskScoringAgent.name);
   private readonly bedrock: BedrockRuntimeClient;
   private readonly model = AI_MODELS.riskScoring;
+  private readonly guardrailId: string;
+  private readonly guardrailVersion: string;
 
   constructor(@Inject(WORKER_CONFIG) config: WorkerConfig) {
     this.bedrock = new BedrockRuntimeClient({ region: config.awsRegion });
+    this.guardrailId = config.bedrockGuardrailId;
+    this.guardrailVersion = config.bedrockGuardrailVersion;
   }
 
   /** The model id this agent runs, for the decision audit row. */
@@ -82,38 +82,40 @@ export class RiskScoringAgent {
       })),
     });
 
-    const command = new InvokeModelCommand({
+    const command = new ConverseCommand({
       modelId: this.model.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify({
-        anthropic_version: BEDROCK_ANTHROPIC_VERSION,
-        max_tokens: this.model.maxOutputTokens,
+      system: [{ text: RISK_SCORING_SYSTEM_PROMPT }],
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: userPrompt }],
+        },
+      ],
+      inferenceConfig: {
+        maxTokens: this.model.maxOutputTokens,
         temperature: this.model.temperature,
-        system: RISK_SCORING_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: userPrompt }],
-          },
-        ],
-      }),
+      },
+      // Guardrails enforce responsible-AI and PII content policies on both
+      // the input (applicant data) and the model's response before it is
+      // parsed into a RiskAssessment.
+      guardrailConfig: {
+        guardrailIdentifier: this.guardrailId,
+        guardrailVersion: this.guardrailVersion,
+        trace: 'enabled',
+      },
     });
 
     const response = await this.bedrock.send(command);
-    const payload = JSON.parse(
-      Buffer.from(response.body).toString('utf-8'),
-    ) as BedrockAnthropicResponse;
 
-    if (payload.stop_reason === 'max_tokens') {
+    if (response.stopReason === 'max_tokens') {
       this.logger.warn(
         `Risk scoring hit the token ceiling for application ${event.applicationId}`,
       );
     }
 
-    const text = (payload.content ?? [])
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text ?? '')
+    const text = (response.output?.message?.content ?? [])
+      .filter((block) => 'text' in block)
+      .map((block) => ('text' in block ? block.text : ''))
       .join('')
       .trim();
 
