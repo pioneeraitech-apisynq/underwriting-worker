@@ -34,6 +34,17 @@ export interface WorkerConfig {
   policyApiUrl: string;
   claimsApiUrl: string;
   awsRegion: string;
+  /**
+   * ID of the Bedrock Guardrail that enforces responsible-AI and PII content
+   * policies on risk-scoring inference calls. Required for production; the
+   * guardrail must be created in the same AWS account as the Bedrock runtime.
+   */
+  bedrockGuardrailId: string;
+  /**
+   * Published version of the Bedrock Guardrail (e.g. "1"). Use DRAFT only in
+   * local / test environments.
+   */
+  bedrockGuardrailVersion: string;
   googleApiKey: string;
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
@@ -61,6 +72,8 @@ export function loadWorkerConfig(): WorkerConfig {
     policyApiUrl: required('POLICY_API_URL'),
     claimsApiUrl: required('CLAIMS_API_URL'),
     awsRegion: optional('AWS_REGION', 'us-east-1'),
+    bedrockGuardrailId: required('BEDROCK_GUARDRAIL_ID'),
+    bedrockGuardrailVersion: optional('BEDROCK_GUARDRAIL_VERSION', '1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
     decisionLetterFromEmail: optional(
