@@ -39,7 +39,7 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
      */
     decisionLetter: {
       provider: 'google-gemini',
-      modelId: 'gemini-2.0-flash',
+      modelId: 'gemini-3.8-flash',
       maxOutputTokens: 900,
       // A little variation keeps letters from reading identically.
       temperature: 0.4,
