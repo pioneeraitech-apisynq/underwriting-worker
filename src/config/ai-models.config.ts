@@ -24,10 +24,15 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
     /**
      * Risk scoring agent — src/ai/risk-scoring.agent.ts
      * Handles applicant PII and prior claims history.
+     *
+     * Uses the US cross-region system inference profile so that requests are
+     * automatically routed across us-east-1 / us-west-2 / us-east-2 during
+     * peak utilisation and so that per-workload cost and token metrics are
+     * emitted to CloudWatch under this profile.
      */
     riskScoring: {
       provider: 'aws-bedrock',
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       maxOutputTokens: 1024,
       // Underwriting has to be reproducible, so scoring is run greedily.
       temperature: 0,
@@ -45,6 +50,3 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
       temperature: 0.4,
     },
   };
-
-/** Bedrock's wire version for the Anthropic Messages API. */
-export const BEDROCK_ANTHROPIC_VERSION = 'bedrock-2023-05-31';
