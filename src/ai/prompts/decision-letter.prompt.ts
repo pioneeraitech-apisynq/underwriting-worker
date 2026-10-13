@@ -1,6 +1,6 @@
 /**
  * System prompt and user-turn builder for the decision letter agent
- * (Google Gemini, gemini-2.0-flash).
+ * (Google Gemini, gemini-3.8-flash).
  *
  * This agent writes to the customer, so the prompt constrains tone, length and
  * what it is allowed to claim. It never sees the raw application: the caller
