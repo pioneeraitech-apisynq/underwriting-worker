@@ -47,6 +47,15 @@ export interface PolicyApplicationEvent {
   submittedAt: string;
 }
 
+/**
+ * Sensitive health data sub-document on a claim, as returned by the Claims
+ * API after the medicalNotes field was promoted from a flat string to a
+ * structured sub-document for finer access-control granularity.
+ */
+export interface ClaimMedicalNotes {
+  notes: string;
+}
+
 /** A prior claim, as returned by the Claims API. */
 export interface PriorClaim {
   claimId: string;
@@ -55,6 +64,9 @@ export interface PriorClaim {
   lossType?: string;
   amountCents?: number;
   incidentDate?: string;
+  /** Sensitive health sub-document — present only when the caller holds the
+   *  required projection permission. Never forwarded to AI models. */
+  medicalNotes?: ClaimMedicalNotes;
 }
 
 /** The policy record held by the Policy API. */
