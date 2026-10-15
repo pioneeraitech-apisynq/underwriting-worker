@@ -35,7 +35,13 @@ export class MailService {
       },
       replyTo: this.config.decisionLetterReplyTo,
       subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
+      templateId: this.config.decisionLetterTemplateId,
+      dynamicTemplateData: {
+        applicantName: mail.applicantName,
+        policyNumber: mail.policyNumber,
+        decision: mail.decision,
+        body: mail.body,
+      },
       categories: ['underwriting-decision', `decision-${mail.decision}`],
       customArgs: {
         policyNumber: mail.policyNumber,
