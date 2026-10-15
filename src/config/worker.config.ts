@@ -38,6 +38,7 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplateId: string;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -71,6 +72,7 @@ export function loadWorkerConfig(): WorkerConfig {
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplateId: required('DECISION_LETTER_TEMPLATE_ID'),
   };
 }
 
