@@ -24,10 +24,21 @@ export const AI_MODELS: Record<'riskScoring' | 'decisionLetter', ModelConfig> =
     /**
      * Risk scoring agent — src/ai/risk-scoring.agent.ts
      * Handles applicant PII and prior claims history.
+     *
+     * Model ID uses the "us." Cross-Region inference profile prefix so that
+     * Bedrock can automatically route requests across us-east-1, us-east-2,
+     * and us-west-2 during peak utilisation bursts, reducing the risk of a
+     * single-Region throttle stalling the Kafka consumer group.
+     *
+     * Token-quota note: AWS Bedrock no longer enforces per-model "Max Tokens
+     * Per Day" limits. Throttling now occurs at a single Cross-Model Max
+     * Tokens Per Day quota scoped per AWS account per Region. Retry/back-
+     * pressure logic should treat ThrottlingExceptions as a shared account-
+     * level signal, not a per-model ceiling.
      */
     riskScoring: {
       provider: 'aws-bedrock',
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       maxOutputTokens: 1024,
       // Underwriting has to be reproducible, so scoring is run greedily.
       temperature: 0,
