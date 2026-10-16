@@ -27,21 +27,34 @@ export class MailService {
   }
 
   async sendDecisionLetter(mail: DecisionLetterMail): Promise<void> {
-    const [response] = await sendgrid.send({
-      to: { email: mail.to, name: mail.applicantName },
-      from: {
-        email: this.config.decisionLetterFromEmail,
-        name: 'Digital Insurance Underwriting',
-      },
-      replyTo: this.config.decisionLetterReplyTo,
-      subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
-      categories: ['underwriting-decision', `decision-${mail.decision}`],
-      customArgs: {
-        policyNumber: mail.policyNumber,
-        decision: mail.decision,
-      },
-    });
+    // TODO: Replace `text` with `templateId` + `dynamicTemplateData` pointing
+    // to versioned SendGrid Dynamic Templates (one per decision type) so that
+    // branding, HTML rendering, and copy changes can be managed without code
+    // deployments. See: https://docs.sendgrid.com/ui/sending-email/how-to-send-an-email-with-dynamic-templates
+    let response: Awaited<ReturnType<typeof sendgrid.send>>[0];
+    try {
+      [response] = await sendgrid.send({
+        to: { email: mail.to, name: mail.applicantName },
+        from: {
+          email: this.config.decisionLetterFromEmail,
+          name: 'Digital Insurance Underwriting',
+        },
+        replyTo: this.config.decisionLetterReplyTo,
+        subject: subjectFor(mail.decision, mail.policyNumber),
+        text: mail.body,
+        categories: ['underwriting-decision', `decision-${mail.decision}`],
+        customArgs: {
+          policyNumber: mail.policyNumber,
+          decision: mail.decision,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `SendGrid rejected decision letter for policy ${mail.policyNumber}: ${(error as Error).message}`,
+        (error as any)?.response?.body,
+      );
+      throw error;
+    }
 
     this.logger.log(
       `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,

@@ -63,10 +63,10 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Must be a SendGrid-verified email address or domain. Promoted to
+    // required() so that deployers are forced to supply a pre-verified sender
+    // rather than falling back to an unverified domain that SendGrid rejects.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
