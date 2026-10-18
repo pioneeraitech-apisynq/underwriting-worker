@@ -38,6 +38,7 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplates: Record<'approved' | 'referred' | 'declined', string>;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,14 +64,17 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Must be a verified sender address or domain in the SendGrid account.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
     ),
+    decisionLetterTemplates: {
+      approved: required('DECISION_LETTER_TEMPLATE_APPROVED'),
+      referred: required('DECISION_LETTER_TEMPLATE_REFERRED'),
+      declined: required('DECISION_LETTER_TEMPLATE_DECLINED'),
+    },
   };
 }
 
