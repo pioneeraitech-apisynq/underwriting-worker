@@ -1,12 +1,9 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   BedrockRuntimeClient,
-  InvokeModelCommand,
+  ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime';
-import {
-  AI_MODELS,
-  BEDROCK_ANTHROPIC_VERSION,
-} from '../config/ai-models.config';
+import { AI_MODELS } from '../config/ai-models.config';
 import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 import {
   PolicyApplicationEvent,
@@ -31,12 +28,6 @@ import {
  * by UnderwritingService, which applies the bands and can override.
  */
 
-interface BedrockAnthropicResponse {
-  content?: Array<{ type: string; text?: string }>;
-  stop_reason?: string;
-  usage?: { input_tokens: number; output_tokens: number };
-}
-
 @Injectable()
 export class RiskScoringAgent {
   private readonly logger = new Logger(RiskScoringAgent.name);
@@ -44,6 +35,9 @@ export class RiskScoringAgent {
   private readonly model = AI_MODELS.riskScoring;
 
   constructor(@Inject(WORKER_CONFIG) config: WorkerConfig) {
+    // No explicit `credentials` option — the SDK default credential-provider
+    // chain resolves the IAM role attached to the ECS task / EC2 instance
+    // profile, issuing short-lived, automatically rotated credentials.
     this.bedrock = new BedrockRuntimeClient({ region: config.awsRegion });
   }
 
@@ -82,38 +76,35 @@ export class RiskScoringAgent {
       })),
     });
 
-    const command = new InvokeModelCommand({
+    // ConverseCommand provides a provider-neutral envelope: the system prompt
+    // and messages array are expressed in Bedrock's own schema, so future
+    // model upgrades (e.g. a new Claude version) require no body changes here.
+    const command = new ConverseCommand({
       modelId: this.model.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify({
-        anthropic_version: BEDROCK_ANTHROPIC_VERSION,
-        max_tokens: this.model.maxOutputTokens,
+      system: [{ text: RISK_SCORING_SYSTEM_PROMPT }],
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: userPrompt }],
+        },
+      ],
+      inferenceConfig: {
+        maxTokens: this.model.maxOutputTokens,
         temperature: this.model.temperature,
-        system: RISK_SCORING_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [{ type: 'text', text: userPrompt }],
-          },
-        ],
-      }),
+      },
     });
 
     const response = await this.bedrock.send(command);
-    const payload = JSON.parse(
-      Buffer.from(response.body).toString('utf-8'),
-    ) as BedrockAnthropicResponse;
 
-    if (payload.stop_reason === 'max_tokens') {
+    if (response.stopReason === 'max_tokens') {
       this.logger.warn(
         `Risk scoring hit the token ceiling for application ${event.applicationId}`,
       );
     }
 
-    const text = (payload.content ?? [])
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text ?? '')
+    const text = (response.output?.message?.content ?? [])
+      .filter((block) => 'text' in block)
+      .map((block) => (block as { text: string }).text)
       .join('')
       .trim();
 
