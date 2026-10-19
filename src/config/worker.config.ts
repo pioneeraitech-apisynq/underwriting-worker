@@ -38,6 +38,9 @@ export interface WorkerConfig {
   sendgridApiKey: string;
   decisionLetterFromEmail: string;
   decisionLetterReplyTo: string;
+  decisionLetterTemplateApproved: string;
+  decisionLetterTemplateReferred: string;
+  decisionLetterTemplateDeclined: string;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -63,13 +66,25 @@ export function loadWorkerConfig(): WorkerConfig {
     awsRegion: optional('AWS_REGION', 'us-east-1'),
     googleApiKey: required('GOOGLE_API_KEY'),
     sendgridApiKey: required('SENDGRID_API_KEY'),
-    decisionLetterFromEmail: optional(
-      'DECISION_LETTER_FROM_EMAIL',
-      'underwriting@digitalinsurance.dev',
-    ),
+    // Sender must be a domain-authenticated address in SendGrid; no fallback
+    // so a misconfigured deployment fails immediately rather than attempting
+    // delivery from an unverified address.
+    decisionLetterFromEmail: required('DECISION_LETTER_FROM_EMAIL'),
     decisionLetterReplyTo: optional(
       'DECISION_LETTER_REPLY_TO',
       'support@digitalinsurance.dev',
+    ),
+    // SendGrid Dynamic Template IDs — one per decision outcome.
+    // Create these in the SendGrid dashboard and set the env vars in every
+    // deployment environment.
+    decisionLetterTemplateApproved: required(
+      'DECISION_LETTER_TEMPLATE_APPROVED',
+    ),
+    decisionLetterTemplateReferred: required(
+      'DECISION_LETTER_TEMPLATE_REFERRED',
+    ),
+    decisionLetterTemplateDeclined: required(
+      'DECISION_LETTER_TEMPLATE_DECLINED',
     ),
   };
 }
