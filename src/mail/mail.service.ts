@@ -5,9 +5,10 @@ import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 /**
  * Delivery of decision letters through SendGrid.
  *
- * The body is whatever the decision letter agent wrote; this service only
- * decides the subject, the addresses and the category the mail is tagged with
- * so delivery can be reported on per decision type.
+ * Each decision type maps to a dedicated Dynamic Template in SendGrid.
+ * The template receives the applicant-specific fields via `dynamicTemplateData`
+ * and uses Handlebars to render the final HTML/text bodies, keeping layout and
+ * copy out of the worker codebase.
  */
 
 export interface DecisionLetterMail {
@@ -27,25 +28,56 @@ export class MailService {
   }
 
   async sendDecisionLetter(mail: DecisionLetterMail): Promise<void> {
-    const [response] = await sendgrid.send({
-      to: { email: mail.to, name: mail.applicantName },
-      from: {
-        email: this.config.decisionLetterFromEmail,
-        name: 'Digital Insurance Underwriting',
-      },
-      replyTo: this.config.decisionLetterReplyTo,
-      subject: subjectFor(mail.decision, mail.policyNumber),
-      text: mail.body,
-      categories: ['underwriting-decision', `decision-${mail.decision}`],
-      customArgs: {
-        policyNumber: mail.policyNumber,
-        decision: mail.decision,
-      },
-    });
+    try {
+      const [response] = await sendgrid.send({
+        to: { email: mail.to, name: mail.applicantName },
+        from: {
+          email: this.config.decisionLetterFromEmail,
+          name: 'Digital Insurance Underwriting',
+        },
+        replyTo: this.config.decisionLetterReplyTo,
+        subject: subjectFor(mail.decision, mail.policyNumber),
+        templateId: templateIdFor(mail.decision, this.config),
+        dynamicTemplateData: {
+          applicantName: mail.applicantName,
+          policyNumber: mail.policyNumber,
+          decision: mail.decision,
+          body: mail.body,
+        },
+        categories: ['underwriting-decision', `decision-${mail.decision}`],
+        customArgs: {
+          policyNumber: mail.policyNumber,
+          decision: mail.decision,
+        },
+      });
 
-    this.logger.log(
-      `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
-    );
+      this.logger.log(
+        `Decision letter for policy ${mail.policyNumber} accepted by SendGrid (${response.statusCode})`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send decision letter for policy ${mail.policyNumber}: ${error}`,
+        // Log the detailed per-message error objects that SendGrid returns in
+        // the response body — these contain field-level diagnostics that are
+        // not visible in the top-level error message.
+        error?.response?.body,
+      );
+      throw error;
+    }
+  }
+}
+
+function templateIdFor(
+  decision: DecisionLetterMail['decision'],
+  config: WorkerConfig,
+): string {
+  switch (decision) {
+    case 'approved':
+      return config.decisionLetterTemplateApproved;
+    case 'referred':
+      return config.decisionLetterTemplateReferred;
+    case 'declined':
+      return config.decisionLetterTemplateDeclined;
   }
 }
 
