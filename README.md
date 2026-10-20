@@ -40,14 +40,14 @@ retrying; a second underwriting run is not.
 | **Redis** (`ioredis`) | Cache and in-flight lock | `src/cache/cache.service.ts` |
 | **SendGrid** (`@sendgrid/mail`) | Email delivery | `src/mail/mail.service.ts` |
 | **AWS Bedrock** (`@aws-sdk/client-bedrock-runtime`) | Risk scoring model | `src/ai/risk-scoring.agent.ts` |
-| **Google Gemini** (`@google/generative-ai`) | Letter drafting model | `src/ai/decision-letter.agent.ts` |
+| **Google Gemini** (`@google/genai`) | Letter drafting model | `src/ai/decision-letter.agent.ts` |
 
 ## The two agents
 
 | Agent | Provider and model | Prompt | Sees |
 | ----- | ------------------ | ------ | ---- |
 | Risk scoring | AWS Bedrock, `anthropic.claude-3-5-sonnet-20241022-v2:0` | `src/ai/prompts/risk-scoring.prompt.ts` | Applicant identity and date of birth, property address and details, full prior-claims history |
-| Decision letter | Google Gemini, `gemini-2.0-flash` | `src/ai/prompts/decision-letter.prompt.ts` | Decision, premium, first name, policy number, sanitised reasons |
+| Decision letter | Google Gemini, `gemini-3.8-flash` | `src/ai/prompts/decision-letter.prompt.ts` | Decision, premium, first name, policy number, sanitised reasons |
 
 Both model ids live in [`src/config/ai-models.config.ts`](./src/config/ai-models.config.ts)
 so an upgrade is a one-line change and an audit of what the worker runs is a
