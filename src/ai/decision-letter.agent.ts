@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenAI } from 'google-genai';
 import { AI_MODELS } from '../config/ai-models.config';
 import { WORKER_CONFIG, WorkerConfig } from '../config/worker.config';
 import {
@@ -24,18 +24,10 @@ import {
 export class DecisionLetterAgent {
   private readonly logger = new Logger(DecisionLetterAgent.name);
   private readonly config = AI_MODELS.decisionLetter;
-  private readonly model: GenerativeModel;
+  private readonly client: GoogleGenAI;
 
   constructor(@Inject(WORKER_CONFIG) workerConfig: WorkerConfig) {
-    const genAI = new GoogleGenerativeAI(workerConfig.googleApiKey);
-    this.model = genAI.getGenerativeModel({
-      model: this.config.modelId,
-      systemInstruction: DECISION_LETTER_SYSTEM_PROMPT,
-      generationConfig: {
-        temperature: this.config.temperature,
-        maxOutputTokens: this.config.maxOutputTokens,
-      },
-    });
+    this.client = new GoogleGenAI({ apiKey: workerConfig.googleApiKey });
   }
 
   /** The model id this agent runs, for the decision audit row. */
@@ -44,11 +36,17 @@ export class DecisionLetterAgent {
   }
 
   async draft(input: DecisionLetterInput): Promise<string> {
-    const result = await this.model.generateContent(
-      buildDecisionLetterPrompt(input),
-    );
+    const result = await this.client.interactions.create({
+      model: this.config.modelId,
+      input: buildDecisionLetterPrompt(input),
+      config: {
+        systemInstruction: DECISION_LETTER_SYSTEM_PROMPT,
+        temperature: this.config.temperature,
+        maxOutputTokens: this.config.maxOutputTokens,
+      },
+    });
 
-    const letter = result.response.text().trim();
+    const letter = (result.text ?? '').trim();
     if (!letter) {
       throw new Error(
         `Decision letter agent returned an empty letter for policy ${input.policyNumber}`,
