@@ -106,8 +106,13 @@ export class RiskScoringAgent {
     ) as BedrockAnthropicResponse;
 
     if (payload.stop_reason === 'max_tokens') {
+      // NOTE: capacity headroom is governed by the Cross-Model Max Tokens Per
+      // Day quota (per account, per Region) — not a per-model limit. Raise or
+      // monitor the unified "Cross-Model Max Tokens Per Day" service quota in
+      // the AWS console / Service Quotas API when investigating this warning.
       this.logger.warn(
-        `Risk scoring hit the token ceiling for application ${event.applicationId}`,
+        `Risk scoring hit the output token ceiling for application ${event.applicationId}. ` +
+          `Check the Cross-Model Max Tokens Per Day quota for this account/Region if this recurs.`,
       );
     }
 
